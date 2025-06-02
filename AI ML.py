@@ -19,9 +19,11 @@ def load_dataset():
     if file_path:
         try:
             if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path)
+                # 🔄 Change: auto-detect CSV separator
+                df = pd.read_csv(file_path, sep=None, engine='python')
             else:
                 df = pd.read_excel(file_path, engine='openpyxl')
+            # ✅ Show dataset shape after load
             messagebox.showinfo("Success", f"Dataset loaded successfully!\nShape: {df.shape}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load dataset: {e}")
