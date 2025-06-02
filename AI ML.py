@@ -5,7 +5,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
+# Global variables
+df = None
+model = None
+
 def load_dataset():
+    """
+    Opens a file dialog to load a CSV or Excel file.
+    Displays a message when the dataset is successfully loaded.
+    """
+    global df
     file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx;*.xls")])
     if file_path:
         try:
@@ -13,29 +22,54 @@ def load_dataset():
                 df = pd.read_csv(file_path)
             else:
                 df = pd.read_excel(file_path, engine='openpyxl')
-            messagebox.showinfo("Success", "Dataset loaded successfully *but did you check the script!")
-            return df
+            messagebox.showinfo("Success", f"Dataset loaded successfully!\nShape: {df.shape}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load dataset: {e}")
-            return None
 
-def train_model(df, features, target):
+def train_model():
+    """
+    Trains a Random Forest classifier using user-specified features and target column.
+    Displays model accuracy after training.
+    """
+    global model, df
+
+    if df is None:
+        messagebox.showerror("Error", "Please load a dataset first!")
+        return
+
     try:
+        features = [f.strip() for f in features_entry.get().split(',')]
+        target = target_entry.get().strip()
         X = df[features]
         y = df[target]
+
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         model = RandomForestClassifier()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
+
         messagebox.showinfo("Model Trained", f"Model trained successfully! Accuracy: {accuracy:.2f}")
-        return model
     except Exception as e:
         messagebox.showerror("Error", f"Failed to train model: {e}")
-        return None
 
-def make_predictions(model, df, features):
+def make_predictions():
+    """
+    Makes predictions using the trained model on the entire dataset.
+    Displays results in the text area.
+    """
+    global model, df
+
+    if df is None:
+        messagebox.showerror("Error", "Please load a dataset first!")
+        return
+
+    if model is None:
+        messagebox.showerror("Error", "Please train the model first!")
+        return
+
     try:
+        features = [f.strip() for f in features_entry.get().split(',')]
         X_new = df[features]
         predictions = model.predict(X_new)
         result_text.delete(1.0, tk.END)
@@ -43,11 +77,11 @@ def make_predictions(model, df, features):
     except Exception as e:
         messagebox.showerror("Error", f"Failed to make predictions: {e}")
 
+# GUI Setup
 root = tk.Tk()
 root.title("Student Predictive Grades")
 
-load_button = tk.Button(root, text="Load Dataset", command=lambda: load_dataset())
-load_button.pack(pady=10)
+tk.Button(root, text="Load Dataset", command=load_dataset).pack(pady=10)
 
 tk.Label(root, text="Features (comma-separated):").pack()
 features_entry = tk.Entry(root)
@@ -57,13 +91,11 @@ tk.Label(root, text="Target:").pack()
 target_entry = tk.Entry(root)
 target_entry.pack(pady=5)
 
-train_button = tk.Button(root, text="Train Model", command=lambda: train_model(df, features_entry.get().split(','), target_entry.get()))
-train_button.pack(pady=10)
-
-predict_button = tk.Button(root, text="Make Predictions", command=lambda: make_predictions(model, df, features_entry.get().split(',')))
-predict_button.pack(pady=10)
+tk.Button(root, text="Train Model", command=train_model).pack(pady=10)
+tk.Button(root, text="Make Predictions", command=make_predictions).pack(pady=10)
 
 result_text = tk.Text(root, height=20, width=80)
 result_text.pack(pady=10)
 
 root.mainloop()
+
