@@ -19,11 +19,9 @@ def load_dataset():
     if file_path:
         try:
             if file_path.endswith('.csv'):
-                # 🔄 Change: auto-detect CSV separator
                 df = pd.read_csv(file_path, sep=None, engine='python')
             else:
                 df = pd.read_excel(file_path, engine='openpyxl')
-            # ✅ Show dataset shape after load
             messagebox.showinfo("Success", f"Dataset loaded successfully!\nShape: {df.shape}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load dataset: {e}")
@@ -42,8 +40,31 @@ def train_model():
     try:
         features = [f.strip() for f in features_entry.get().split(',')]
         target = target_entry.get().strip()
+
+        if not features or not target:
+            messagebox.showerror("Error", "Please specify both features and target!")
+            return
+
+        missing_features = [f for f in features if f not in df.columns]
+        if missing_features:
+            messagebox.showerror("Error", f"Features not found in dataset: {missing_features}")
+            return
+
+        if target not in df.columns:
+            messagebox.showerror("Error", f"Target column '{target}' not found in dataset!")
+            return
+
         X = df[features]
         y = df[target]
+
+        # Convert categorical columns to numeric
+        for col in X.columns:
+            if X[col].dtype == 'object':
+                X[col] = pd.Categorical(X[col]).codes
+
+        # Handle missing values
+        X = X.fillna(X.mean())
+        y = y.fillna(y.mean())
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         model = RandomForestClassifier()
@@ -73,6 +94,15 @@ def make_predictions():
     try:
         features = [f.strip() for f in features_entry.get().split(',')]
         X_new = df[features]
+
+        # Convert categorical columns to numeric (same as training)
+        for col in X_new.columns:
+            if X_new[col].dtype == 'object':
+                X_new[col] = pd.Categorical(X_new[col]).codes
+
+        # Handle missing values
+        X_new = X_new.fillna(X_new.mean())
+
         predictions = model.predict(X_new)
         result_text.delete(1.0, tk.END)
         result_text.insert(tk.END, f"Predictions:\n{predictions}")
@@ -86,11 +116,11 @@ root.title("Student Predictive Grades")
 tk.Button(root, text="Load Dataset", command=load_dataset).pack(pady=10)
 
 tk.Label(root, text="Features (comma-separated):").pack()
-features_entry = tk.Entry(root)
+features_entry = tk.Entry(root, width=50)
 features_entry.pack(pady=5)
 
 tk.Label(root, text="Target:").pack()
-target_entry = tk.Entry(root)
+target_entry = tk.Entry(root, width=50)
 target_entry.pack(pady=5)
 
 tk.Button(root, text="Train Model", command=train_model).pack(pady=10)
@@ -100,4 +130,3 @@ result_text = tk.Text(root, height=20, width=80)
 result_text.pack(pady=10)
 
 root.mainloop()
-
