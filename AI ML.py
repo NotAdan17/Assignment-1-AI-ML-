@@ -2,13 +2,14 @@ import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 
 # Global variables
 df = None
 model = None
 
+# Load dataset from a CSV or Excel file
 def load_dataset():
     """
     Opens a file dialog to load a CSV or Excel file.
@@ -26,86 +27,89 @@ def load_dataset():
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load dataset: {e}")
 
+# Train the ML model using selected features and target
 def train_model():
     """
-    Trains a Random Forest classifier using user-specified features and target column.
-    Displays model accuracy after training.
+    Trains a Random Forest regressor using user-specified features and target column.
+    Displays model performance metrics after training.
     """
     global model, df
-
+    
     if df is None:
         messagebox.showerror("Error", "Please load a dataset first!")
         return
-
+    
     try:
         features = [f.strip() for f in features_entry.get().split(',')]
         target = target_entry.get().strip()
-
+        
         if not features or not target:
             messagebox.showerror("Error", "Please specify both features and target!")
             return
-
+        
+        # Check if columns exist
         missing_features = [f for f in features if f not in df.columns]
         if missing_features:
             messagebox.showerror("Error", f"Features not found in dataset: {missing_features}")
             return
-
+        
         if target not in df.columns:
             messagebox.showerror("Error", f"Target column '{target}' not found in dataset!")
             return
-
+        
         X = df[features]
         y = df[target]
-
+        
         # Convert categorical columns to numeric
         for col in X.columns:
             if X[col].dtype == 'object':
                 X[col] = pd.Categorical(X[col]).codes
-
+        
         # Handle missing values
         X = X.fillna(X.mean())
         y = y.fillna(y.mean())
-
+        
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        model = RandomForestClassifier()
+        model = RandomForestRegressor(random_state=42)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        accuracy = accuracy_score(y_test, y_pred)
-
-        messagebox.showinfo("Model Trained", f"Model trained successfully! Accuracy: {accuracy:.2f}")
+        
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        
+        messagebox.showinfo("Model Trained", f"Model trained successfully!\nMSE: {mse:.2f}\nR² Score: {r2:.2f}")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to train model: {e}")
 
+# Use the trained model to make predictions
 def make_predictions():
     """
-    Makes predictions using the trained model on the entire dataset.
-    Displays results in the text area.
+    Makes predictions on the entire dataset using the trained model.
+    Displays predictions in the text box.
     """
     global model, df
-
+    
     if df is None:
         messagebox.showerror("Error", "Please load a dataset first!")
         return
-
+    
     if model is None:
         messagebox.showerror("Error", "Please train the model first!")
         return
-
+    
     try:
         features = [f.strip() for f in features_entry.get().split(',')]
         X_new = df[features]
-
+        
         # Convert categorical columns to numeric (same as training)
         for col in X_new.columns:
             if X_new[col].dtype == 'object':
                 X_new[col] = pd.Categorical(X_new[col]).codes
-
-        # Handle missing values
-        X_new = X_new.fillna(X_new.mean())
-
+                
+        X_new = X_new.fillna(X_new.mean())  # Handle missing values
         predictions = model.predict(X_new)
         result_text.delete(1.0, tk.END)
-        result_text.insert(tk.END, f"Predictions:\n{predictions}")
+        result_text.insert(tk.END, "Predictions:\n" + "\n".join(map(str, predictions)))
     except Exception as e:
         messagebox.showerror("Error", f"Failed to make predictions: {e}")
 
@@ -113,6 +117,7 @@ def make_predictions():
 root = tk.Tk()
 root.title("Student Predictive Grades")
 
+# Buttons and Inputs
 tk.Button(root, text="Load Dataset", command=load_dataset).pack(pady=10)
 
 tk.Label(root, text="Features (comma-separated):").pack()
